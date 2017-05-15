@@ -55,11 +55,21 @@ module Btce
                     Trade
                     CancelOrder)
 
-
     def initialize(opts={})
       raise ArgumentError unless opts.has_key?(:key) and opts.has_key?(:secret)
       @key = opts[:key]
       @secret = opts[:secret]
+      @nonce = -1
+      detect_nonce!
+    end
+
+    def detect_nonce!
+      info=get_info
+      if info['success'] == 0 
+        if match=info['error'].match(/you should send:([0-9]+)/)
+          @nonce=match.captures[0].to_i
+        end
+      end
     end
 
     def sign(params)
@@ -85,12 +95,12 @@ module Btce
     end
 
     def nonce
-      while result = Time.now.to_i and @last_nonce and @last_nonce >= result
-        sleep 1
-      end
-      return @last_nonce = result
+      @nonce+=1
     end
-    private :nonce
+
+    def nonce= nonce
+      @nonce=nonce
+    end
 
     OPERATIONS.each do |operation|
       class_eval %{
